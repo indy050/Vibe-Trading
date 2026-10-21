@@ -63,3 +63,28 @@ accountvaluta. In MT5 staat dat bij de specificatie van het symbool.
    plan. Met `bias_filter_timeframe="H1"` wordt het een harde filter.
 8. **Backtest is streng.** Raakt één candle zowel SL als TP, dan telt het als
    verlies. Raakt de SL in de fill-candle, dan ook.
+
+## Ada's nieuwsdesk (`news.py`)
+
+Ada volgt twee bronnen:
+
+- **ForexFactory**, de weekkalender (deze en volgende week). Belangrijk US-nieuws
+  (USD, impact *High*) wordt omgerekend naar servertijd van IC Markets
+  (New York + 7 uur, klopt in zomer- en wintertijd) en gaat als nieuwsvenster
+  naar de engine via `Us30Strategy.set_news_events(...)`. De kalender wordt
+  hooguit eens per uur opgehaald en lokaal bewaard voor als de site even niet
+  bereikbaar is.
+- **FinancialJuice**, de realtime headlines (RSS). Ada labelt wat ertoe doet voor
+  US30: `data` (US-cijfers met actual/forecast/previous), `fed`, `politiek`,
+  `geopolitiek` en `markt` (o.a. de 30 Dow-aandelen). Belangrijke headlines krijgen
+  een `!`. Headlines zijn informatie: ze blokkeren geen trades.
+
+```bash
+python -m src.us30_strategy.news                    # ochtendbriefing + headlines
+python -m src.us30_strategy.news --medium           # ook US-nieuws met Medium impact
+python -m src.us30_strategy.news --save-news nieuws.csv   # bouw nieuwshistorie op voor backtests
+```
+
+ForexFactory geeft via deze feed alleen de huidige en volgende week. Draai
+`--save-news` dus regelmatig (bijvoorbeeld dagelijks), dan groeit `nieuws.csv`
+mee en kan de backtest er later mee werken (`--news nieuws.csv`).

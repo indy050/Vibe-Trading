@@ -18,7 +18,7 @@ from __future__ import annotations
 import math
 from collections import Counter
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timedelta
 
 from .config import StrategyConfig
@@ -140,6 +140,10 @@ class Us30Strategy:
             if (side == "long" and b == "bearish") or (side == "short" and b == "bullish"):
                 return f"{cfg.bias_filter_timeframe}-structuur is {b}"
         return None
+
+    def set_news_events(self, events) -> None:
+        """Replace the news blackout times (broker time), e.g. from Ada's ForexFactory calendar."""
+        self.cfg = replace(self.cfg, news_events=tuple(sorted(events)))
 
     def cancel_pending(self, t: datetime, reason: str = "handmatig geannuleerd") -> None:
         """Cancel a pending order and any setup waiting for its entry gap."""
