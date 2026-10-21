@@ -88,3 +88,26 @@ python -m src.us30_strategy.news --save-news nieuws.csv   # bouw nieuwshistorie 
 ForexFactory geeft via deze feed alleen de huidige en volgende week. Draai
 `--save-news` dus regelmatig (bijvoorbeeld dagelijks), dan groeit `nieuws.csv`
 mee en kan de backtest er later mee werken (`--news nieuws.csv`).
+
+## Juul, de journal-agent (`journal.py`)
+
+Juul zet elke gesloten trade in je **Trade Portal**-journal en houdt de
+P&L-kalender per dag bij. De journal bewaart alles in je browser en wisselt data
+uit via de back-up. Daarom werkt Juul met dat bestand:
+
+1. In de journal: *Back-up downloaden*.
+2. Juul voegt de nieuwe trades toe (handmatige trades en stortingen blijven staan,
+   dubbele trades worden overgeslagen):
+
+   ```bash
+   python -m src.us30_strategy.journal --backup trade-journal-backup.json \
+       --trades trades.csv --out trade-journal-bijgewerkt.json --source demo
+   ```
+
+3. In de journal: *Back-up terugzetten* met het nieuwe bestand.
+   Let op: terugzetten vervangt alles in de browser. Gebruik daarom altijd de
+   nieuwste back-up als basis.
+
+Elke trade krijgt in de notities de sessie, TP of SL, de R-waarde en
+"regels gevolgd". Met `--month 2026-10` toont Juul de P&L-kalender van die maand,
+inclusief je handmatige trades.
