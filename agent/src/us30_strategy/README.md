@@ -35,7 +35,7 @@ accountvaluta. In MT5 staat dat bij de specificatie van het symbool.
 | Geen entries 40 min voor tot 15 min na nieuws | `news_before_minutes`, `news_after_minutes` |
 | Na verlies 10 minuten pauze | `cooldown_after_loss_minutes` |
 
-## Keuzes waar het plan ruimte laat (graag bevestigen)
+## Keuzes waar het plan ruimte laat
 
 1. **Take profit.** "Hoog/laag van de vorige of huidige sessie": standaard pakt de
    code het niveau van de **vorige** sessie, zoals in voorbeeld 1. Als dat niet
@@ -47,9 +47,13 @@ accountvaluta. In MT5 staat dat bij de specificatie van het symbool.
 3. **Entry gap.** De engine kiest de laagste bullish FVG (bij een buy) die na de
    sweep is ontstaan. Hij wacht daar maximaal 20 minuten na de IFVG op
    (`entry_gap_max_minutes`).
-4. **Koers al voorbij de entry.** Staat de koers bij het plaatsen al onder de
-   buy-entry (of boven de sell-entry), dan komt er geen order. MT5 zou zo'n
-   limit ook weigeren.
+4. **Koers al voorbij de entry.** Staat de koers bij het ontstaan van de entry
+   gap al onder de buy-entry (of boven de sell-entry), dan stapt de engine
+   **direct in tegen de marktprijs**. SL en TP blijven volgens de regels; de
+   lotgrootte wordt berekend op de echte afstand tot de SL. Staat de koers al
+   voorbij de SL, dan komt er geen trade (`market_entry_if_past`).
+   Opent een candle na het plaatsen van de limit al voorbij de entry, dan telt
+   de backtest de openingsprijs als fill, net als een markt-entry.
 5. **"Entries" tellen bij een fill.** Een limit die verloopt, telt niet mee voor
    het maximum van 3 per sessie en 6 per dag.
 6. **Nieuws en open order.** Begint het nieuwsvenster terwijl er een limit

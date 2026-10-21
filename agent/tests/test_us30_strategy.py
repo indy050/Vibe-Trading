@@ -193,3 +193,39 @@ def test_structure_and_format():
             bars.append(Bar(t0 + timedelta(hours=k, minutes=m), p, p + 2, p - 2, p))
     assert bias_report(bars)["H1"] == "bullish"
     assert fmt(50897.5) == "50.897,5" and fmt(51131) == "51.131"
+
+
+def test_market_entry_when_price_already_past_the_limit():
+    from src.us30_strategy.models import FVG
+
+    s = _run(_bars(ASIA_1 + LONDON_1[:5]))  # IFVG confirmed, sweep low 50.884
+    gap = FVG("bull", 50890, 50900, len(s.bars) - 2, len(s.bars), DAY.replace(hour=9, minute=16))
+    bar = Bar(DAY.replace(hour=9, minute=15), 50897, 50899, 50893, 50895)
+    s._place(bar, len(s.bars), "long", gap)
+    assert s.order is None
+    [t] = s.trades
+    assert t.entry == 50895 and t.sl == 50881
+    assert t.lots == pytest.approx(2.14)  # 30 / 14 points
+    assert _kinds(s)[-1] == "market_entry"
+    assert s.entries_session[(DAY.date(), "london")] == 1
+
+    s2 = _run(_bars(ASIA_1 + LONDON_1[:5]))
+    s2._place(Bar(bar.time, 50882, 50883, 50879, 50880), len(s2.bars), "long", gap)
+    assert s2.trades == [] and "stop" in s2.events[-1].message
+
+
+def test_limit_fills_at_better_open():
+    gap_down = [("09:16", 50895, 50899, 50893, 50898), ("09:17", 50898, 50995, 50897, 50990)]
+    s = _run(_bars(ASIA_1 + LONDON_1 + gap_down))
+    [t] = s.trades
+    assert t.entry == 50895 and t.exit_reason == "tp"
+
+
+def test_news_window_removes_open_limit():
+    cfg = StrategyConfig(news_events=(DAY.replace(hour=15, minute=30),))  # blackout from 14:50
+    hold = [(f"14:{m}", 51100, 51105, 51095, 51100) for m in range(45, 55)]
+    s = _run(_bars(ASIA_2 + LONDON_2 + NY_2 + hold), cfg)
+    cancelled = [e for e in s.events if e.kind == "order_cancelled"]
+    assert cancelled and cancelled[0].data["reason"] == "nieuwsvenster"
+    assert cancelled[0].time == DAY.replace(hour=14, minute=50)
+    assert s.trades == [] and s.entries_session[(DAY.date(), "ny")] == 0

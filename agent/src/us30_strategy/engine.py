@@ -204,6 +204,13 @@ class Us30Strategy:
         elif tp_hit:
             self._close_position(bar.close_time, p.tp, "tp")
 
+    def _open(self, trade: Trade, i: int) -> None:
+        self.position = trade
+        self.position_index = i
+        self.trades.append(trade)
+        self.entries_session[(trade.filled.date(), trade.session)] += 1
+        self.entries_day[trade.filled.date()] += 1
+
     def _manage_order(self, bar: Bar, i: int, sess: str | None) -> None:
         o = self.order
         if o is None or o.placed_index >= i:
@@ -222,13 +229,11 @@ class Us30Strategy:
         if not filled:
             return
         self.order = None
-        self.position = Trade(o.side, o.entry, o.sl, o.tp, o.lots, o.session, o.placed, bar.time)
-        self.position_index = i
-        self.trades.append(self.position)
-        self.entries_session[(bar.time.date(), o.session)] += 1
-        self.entries_day[bar.time.date()] += 1
-        self._emit(bar.time, "filled", f"Limit {o.side} gevuld @ {fmt(o.entry)} ({o.lots:.2f} lot).",
-                   side=o.side, entry=o.entry, lots=o.lots)
+        # A candle that opens beyond the limit fills at its open, the better price.
+        price = min(o.entry, bar.open + sp) if o.side == "long" else max(o.entry, bar.open)
+        self._open(Trade(o.side, price, o.sl, o.tp, o.lots, o.session, o.placed, bar.time), i)
+        self._emit(bar.time, "filled", f"Limit {o.side} gevuld @ {fmt(price)} ({o.lots:.2f} lot).",
+                   side=o.side, entry=price, lots=o.lots)
         sl_hit, _ = self._exit_hits(bar, self.position)
         if sl_hit:  # stop touched inside the fill candle: count it as stopped out
             self._close_position(bar.close_time, o.sl, "sl")
@@ -369,15 +374,22 @@ class Us30Strategy:
         if side == "long":
             entry = gap.top - cfg.entry_fraction * gap.size
             sl = s.sweep_low - cfg.sl_buffer
-            if bar.close <= entry:
-                self._emit(bar.time, "setup_skipped", f"Koers ({fmt(bar.close)}) staat al onder de entry {fmt(entry)}: geen order.", side=side)
-                return
+            market = bar.close <= entry
+            price = bar.close + cfg.spread  # a market buy pays the ask
         else:
             entry = gap.bottom + cfg.entry_fraction * gap.size
             sl = s.sweep_high + cfg.sl_buffer
-            if bar.close >= entry:
-                self._emit(bar.time, "setup_skipped", f"Koers ({fmt(bar.close)}) staat al boven de entry {fmt(entry)}: geen order.", side=side)
+            market = bar.close >= entry
+            price = bar.close
+        if market:
+            # Price reached the entry level before the limit could be placed: enter at market.
+            if not cfg.market_entry_if_past:
+                self._emit(bar.time, "setup_skipped", f"Koers ({fmt(bar.close)}) al voorbij de entry {fmt(entry)}: geen order.", side=side)
                 return
+            if (side == "long" and price <= sl) or (side == "short" and price >= sl):
+                self._emit(bar.time, "setup_skipped", f"Koers ({fmt(bar.close)}) al voorbij de stop {fmt(sl)}: geen trade.", side=side)
+                return
+            entry = price
         tp = self._target(side, entry)
         if tp is None:
             self._emit(bar.time, "setup_skipped", "Geen sessie-hoog/laag als doel voorbij de entry: geen order.", side=side)
@@ -386,9 +398,15 @@ class Us30Strategy:
         if lots <= 0:
             self._emit(bar.time, "setup_skipped", "Stop te ver voor de minimale lotgrootte bij 0,3% risico: geen order.", side=side)
             return
+        rr = abs(tp - entry) / abs(entry - sl)
+        if market:
+            self._open(Trade(side, entry, sl, tp, lots, s.session, bar.close_time, bar.close_time), i)
+            self._emit(bar.time, "market_entry",
+                       f"Koers al in de entry gap: direct {'gekocht' if side == 'long' else 'verkocht'} @ {fmt(entry)} · SL {fmt(sl)} · TP {fmt(tp)} · {lots:.2f} lot · {rr:.1f}:1.",
+                       side=side, entry=entry, sl=sl, tp=tp, lots=lots, gap=(gap.bottom, gap.top))
+            return
         self.order = Order(side, entry, sl, tp, lots, bar.close_time,
                            bar.close_time + timedelta(minutes=cfg.order_valid_minutes), s.session, gap, i)
-        rr = abs(tp - entry) / abs(entry - sl)
         self._emit(bar.time, "order_placed",
                    f"{'Buy' if side == 'long' else 'Sell'} limit {fmt(entry)} · SL {fmt(sl)} · TP {fmt(tp)} · {lots:.2f} lot · {rr:.1f}:1.",
                    side=side, entry=entry, sl=sl, tp=tp, lots=lots, gap=(gap.bottom, gap.top))

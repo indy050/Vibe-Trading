@@ -41,6 +41,8 @@ class StrategyConfig:
     entry_fraction: float = 0.25
     # Pending limit lifetime.
     order_valid_minutes: int = 60
+    # Price already beyond the limit level when the entry gap forms: enter at market.
+    market_entry_if_past: bool = True
 
     # Stop beyond the sweep extreme.
     sl_buffer: float = 3.0
