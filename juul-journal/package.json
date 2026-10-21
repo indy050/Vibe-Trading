@@ -1,0 +1,12 @@
+{
+  "name": "juul-trade-journal",
+  "private": true,
+  "type": "module",
+  "description": "Juul's trade journal: P&L calendar and trade log on Netlify Functions + Blobs",
+  "dependencies": {
+    "@netlify/blobs": "^11.1.0"
+  },
+  "devDependencies": {
+    "@netlify/functions": "^6.0.0"
+  }
+}

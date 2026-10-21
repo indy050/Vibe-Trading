@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Juuls Journal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Chivo:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Autumn study: walnut and leather browns, pumpkin accent, olive for profit, rust for loss. Juul + month summary on top; calendar beside the selected day; entry form, trade log and import/export below. */
+:root{
+  color-scheme: dark;
+  --bg:#1c130c; --panel:#2a1c12; --panel-2:#352418; --line:#4a3324;
+  --fg:#f3eadb; --muted:#b5a28b; --accent:#e08a3c;
+  --good:#a9c46c; --bad:#e0705a; --warn:#e8b04a;
+  --f-pixel:"Silkscreen", "Courier New", monospace;
+  --f-body:"Chivo", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:radial-gradient(900px 600px at 92% -8%, #4a2f1a 0%, transparent 60%), var(--bg);background-attachment:fixed;color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.45;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:max(16px, env(safe-area-inset-top, 0px)) 40px}
+[hidden]{display:none!important}
+.wrap{max-width:1180px;margin:0 auto;display:grid;gap:16px}
+.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.up{color:var(--good)} .down{color:var(--bad)}
+button,input,select,textarea{font:inherit;color:inherit}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn{font-family:var(--f-pixel);font-size:11px;padding:8px 12px;border-radius:3px;cursor:pointer;border:2px solid var(--accent);background:var(--accent);color:var(--bg)}
+.btn.ghost{background:transparent;color:var(--fg);border-color:var(--line)}
+.btn.danger{background:transparent;color:var(--bad);border-color:var(--bad)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+.hero{display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap}
+.hero canvas{width:72px;height:102px;image-rendering:pixelated;flex:none}
+.hero .who{display:grid;gap:8px;min-width:0;flex:1}
+h1{font-family:var(--f-pixel);font-weight:700;font-size:26px;margin:0;line-height:1;text-wrap:balance}
+h1 span{color:var(--accent)}
+.say{position:relative;background:var(--fg);color:var(--bg);font-size:13px;padding:9px 12px;border-radius:3px;max-width:70ch}
+.say::before{content:"";position:absolute;left:-8px;bottom:12px;border:8px solid transparent;border-left:0;border-right-color:var(--fg)}
+.status{font-size:12px;color:var(--muted)}
+.status b{color:var(--fg);font-weight:500}
+.status button{background:none;border:0;color:var(--accent);cursor:pointer;padding:0;font-size:12px}
+
+.stats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.stat{background:var(--panel);padding:11px 13px;display:grid;gap:3px;min-width:0}
+.stat label{font-family:var(--f-pixel);font-size:10px;color:var(--muted);text-transform:uppercase}
+.stat .v{font-family:var(--f-mono);font-size:19px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat .s{font-size:11.5px;color:var(--muted)}
+
+.main{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:16px;align-items:start}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:4px;min-width:0}
+.panel>h2{font-family:var(--f-pixel);font-size:12px;font-weight:400;color:var(--muted);margin:0;padding:12px 14px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+.panel>h2 em{font-style:normal;color:var(--fg)}
+.pad{padding:14px;display:grid;gap:12px}
+
+.calnav{display:flex;gap:6px;align-items:center}
+.calnav button{font-family:var(--f-pixel);font-size:11px;background:var(--panel-2);border:1px solid var(--line);border-radius:3px;padding:4px 9px;cursor:pointer;color:var(--fg)}
+.tbl{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+.cal{table-layout:fixed;min-width:540px}
+.cal th{font-family:var(--f-pixel);font-size:10px;font-weight:400;color:var(--muted);text-transform:uppercase;padding:8px 4px;text-align:center}
+.cal td{padding:3px;vertical-align:top}
+.day{width:100%;border:0;border-radius:3px;padding:6px 7px;min-height:58px;display:grid;gap:2px;align-content:start;text-align:left;background:var(--panel-2);font-family:var(--f-mono);font-variant-numeric:tabular-nums;cursor:pointer;color:var(--fg)}
+.day:hover{filter:brightness(1.15)}
+.day .n{font-size:11px;color:var(--muted)}
+.day .v{font-size:13px;font-weight:600}
+.day .c{font-size:10px;color:var(--muted)}
+.day.out{background:transparent;cursor:default}
+.day.today{outline:2px solid var(--warn);outline-offset:-2px}
+.day.sel{box-shadow:inset 0 0 0 2px var(--accent)}
+.wk{font-family:var(--f-mono);font-size:12px;text-align:right;padding:12px 6px;color:var(--muted)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:var(--muted);padding:0 14px 12px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:12px;height:12px;border-radius:2px;display:block}
+
+.trow{display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
+.trow:last-child{border-bottom:0}
+.side{font-family:var(--f-pixel);font-size:10px;padding:2px 6px;border-radius:2px}
+.side.L{background:color-mix(in srgb,var(--good) 20%,transparent);color:var(--good)}
+.side.S{background:color-mix(in srgb,var(--bad) 20%,transparent);color:var(--bad)}
+.side.X{background:var(--panel-2);color:var(--muted)}
+.trow .meta{font-size:12px;color:var(--muted);grid-column:2/4;min-width:0;overflow-wrap:anywhere}
+.link{background:none;border:0;color:var(--accent);cursor:pointer;font-size:12px;padding:0}
+.none{color:var(--muted);font-size:13px;margin:0}
+textarea,input,select{background:var(--bg);border:1px solid var(--line);border-radius:3px;padding:7px 9px;width:100%;min-width:0}
+textarea{resize:vertical;min-height:52px}
+
+.log th{font-family:var(--f-pixel);font-size:10px;font-weight:400;color:var(--muted);text-transform:uppercase;border-bottom:1px solid var(--line);padding:9px 10px;text-align:right;white-space:nowrap}
+.log td{padding:8px 10px;text-align:right;white-space:nowrap;border-top:1px solid var(--line)}
+.log th:first-child,.log td:first-child,.log th:nth-child(2),.log td:nth-child(2){text-align:left}
+.log td.notes{text-align:left;white-space:normal;color:var(--muted);font-size:12px;min-width:220px}
+.form{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.form .f{display:grid;gap:4px;min-width:0}
+.form .f.w4{grid-column:1/-1}
+.form label{font-family:var(--f-pixel);font-size:9.5px;color:var(--muted);text-transform:uppercase}
+.dirs{display:flex;gap:6px}
+.dirs button{flex:1;font-family:var(--f-pixel);font-size:10px;padding:8px;border-radius:3px;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer}
+.dirs button.on[data-d="Long"]{background:var(--good);border-color:var(--good);color:var(--bg)}
+.dirs button.on[data-d="Short"]{background:var(--bad);border-color:var(--bad);color:var(--bg)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.msg{font-size:12.5px}
+.msg.err{color:var(--bad)} .msg.ok{color:var(--good)}
+.confirm{border:2px solid var(--bad);border-radius:4px;padding:10px 12px;display:grid;gap:8px;background:color-mix(in srgb,var(--bad) 8%,var(--panel))}
+.note{font-size:12px;color:var(--muted);max-width:80ch;margin:0}
+.login{max-width:460px}
+.login .pad{gap:10px}
+
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+@media (max-width:980px){.main{grid-template-columns:minmax(0,1fr)}.stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:560px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.form{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <canvas id="juul" width="60" height="85" aria-hidden="true"></canvas>
+    <div class="who">
+      <h1>Juuls <span>Journal</span></h1>
+      <div class="say" id="say">Even inloggen, dan open ik je journal.</div>
+      <div class="status" id="status">Niet verbonden.</div>
+    </div>
+  </header>
+
+  <section class="panel login" id="login" aria-labelledby="loginH">
+    <h2><span id="loginH">TOEGANG</span></h2>
+    <form class="pad" id="loginForm">
+      <label class="status" for="token">Toegangscode</label>
+      <input id="token" type="password" autocomplete="current-password" required>
+      <div class="row"><button class="btn" type="submit">Openen</button><span class="msg" id="loginMsg" aria-live="polite"></span></div>
+      <p class="note">De code wordt alleen in deze browser onthouden. Je trades staan op de server van Netlify.</p>
+    </form>
+  </section>
+
+  <div id="app" hidden>
+    <div class="wrap">
+      <section class="stats" aria-label="Maandoverzicht">
+        <div class="stat"><label>Maand P&amp;L</label><div class="v" id="sPnl">–</div><div class="s" id="sMonth">–</div></div>
+        <div class="stat"><label>Winrate</label><div class="v" id="sWin">–</div><div class="s" id="sWl">–</div></div>
+        <div class="stat"><label>Profit factor</label><div class="v" id="sPf">–</div><div class="s">winst ÷ verlies</div></div>
+        <div class="stat"><label>Gem. R</label><div class="v" id="sR">–</div><div class="s" id="sRn">–</div></div>
+        <div class="stat"><label>Dagen</label><div class="v" id="sDays">–</div><div class="s">groen / rood</div></div>
+        <div class="stat"><label>Saldo</label><div class="v" id="sBal">–</div><div class="s" id="sBalS">–</div></div>
+      </section>
+
+      <div class="main">
+        <section class="panel" aria-labelledby="calH">
+          <h2><span id="calH">P&amp;L-KALENDER</span>
+            <span class="calnav"><button type="button" id="prev" aria-label="Vorige maand">◀</button><em id="calMonth">–</em><button type="button" id="next" aria-label="Volgende maand">▶</button><button type="button" id="thisMonth">VANDAAG</button></span></h2>
+          <div class="tbl"><table class="cal" id="cal"></table></div>
+          <div class="legend"><span><i style="background:color-mix(in srgb,var(--good) 45%,var(--panel-2))"></i>winstdag</span><span><i style="background:color-mix(in srgb,var(--bad) 45%,var(--panel-2))"></i>verliesdag</span><span><i style="outline:2px solid var(--warn);outline-offset:-2px;background:var(--panel-2)"></i>vandaag</span></div>
+        </section>
+        <section class="panel" aria-labelledby="dayH">
+          <h2><span id="dayH">DAG</span><em id="dayTitle">–</em></h2>
+          <div class="pad">
+            <div id="dayTrades"></div>
+            <div class="row"><button class="btn ghost" type="button" id="addForDay">+ Trade op deze dag</button></div>
+          </div>
+        </section>
+      </div>
+
+      <section class="panel" aria-labelledby="formH">
+        <h2><span id="formH">TRADE</span><em id="formMode">nieuw</em></h2>
+        <form class="pad" id="tradeForm" novalidate>
+          <div class="form">
+            <div class="f"><label for="fDate">Datum</label><input type="date" id="fDate" required></div>
+            <div class="f"><label for="fPair">Pair</label><input id="fPair" value="US30" list="pairs"><datalist id="pairs"><option>US30</option><option>NAS100</option><option>XAU/USD</option></datalist></div>
+            <div class="f"><label>Richting</label><div class="dirs" role="group" aria-label="Richting"><button type="button" data-d="Long">LONG</button><button type="button" data-d="Short">SHORT</button></div></div>
+            <div class="f"><label for="fSession">Sessie</label><select id="fSession"><option value="">–</option><option value="london">Londen</option><option value="ny">New York</option><option value="asia">Azië</option></select></div>
+            <div class="f"><label for="fEntry">Entry</label><input id="fEntry" inputmode="decimal"></div>
+            <div class="f"><label for="fSl">Stop loss</label><input id="fSl" inputmode="decimal"></div>
+            <div class="f"><label for="fTp">Take profit</label><input id="fTp" inputmode="decimal"></div>
+            <div class="f"><label for="fLots">Lots</label><input id="fLots" inputmode="decimal"></div>
+            <div class="f"><label for="fExit">Exit</label><input id="fExit" inputmode="decimal"></div>
+            <div class="f"><label for="fResult">Resultaat (€)</label><input id="fResult" inputmode="decimal" required placeholder="bijv. 167,43 of -30"></div>
+            <div class="f"><label for="fRules">Regels gevolgd</label><select id="fRules"><option value="">–</option><option value="1">ja</option><option value="0">nee</option></select></div>
+            <div class="f"><label>R (berekend)</label><div class="num" id="fR" style="padding:8px 0">–</div></div>
+            <div class="f w4"><label for="fNotes">Notities</label><textarea id="fNotes" rows="2" placeholder="Setup, sweep, wat ging goed of fout"></textarea></div>
+          </div>
+          <div class="row"><button class="btn" type="submit" id="fSave">Trade opslaan</button><button class="btn ghost" type="button" id="fCancel" hidden>Annuleren</button><span class="msg" id="fMsg" aria-live="polite"></span></div>
+          <div id="delBox"></div>
+        </form>
+      </section>
+
+      <section class="panel" aria-labelledby="logH">
+        <h2><span id="logH">TRADES DEZE MAAND</span><em id="logCount">0</em></h2>
+        <div class="tbl"><table class="log"><thead><tr><th>Datum</th><th>Pair</th><th>Kant</th><th>Entry</th><th>SL</th><th>TP</th><th>Lots</th><th>Exit</th><th>Resultaat</th><th>R</th><th>Notities</th></tr></thead><tbody id="log"></tbody></table></div>
+      </section>
+
+      <section class="panel" aria-labelledby="ioH">
+        <h2><span id="ioH">IMPORTEREN &amp; EXPORTEREN</span></h2>
+        <div class="pad">
+          <p class="note">Importeer de back-up uit je Trade Portal (<span class="num">trade-journal-backup-….json</span>) of een bestand dat Juul in Vibe-Trading maakte. Trades die er al in staan worden overgeslagen. Exporteren geeft een bestand in hetzelfde Trade Portal-formaat, of een CSV.</p>
+          <div class="row">
+            <input type="file" id="imp" accept="application/json,.json" hidden>
+            <button class="btn" type="button" id="impBtn">Back-up importeren</button>
+            <button class="btn ghost" type="button" id="expJson">Exporteer (Trade Portal)</button>
+            <button class="btn ghost" type="button" id="expCsv">Exporteer CSV</button>
+            <span class="msg" id="ioMsg" aria-live="polite"></span>
+          </div>
+          <div class="row"><label for="startCap" class="status" style="white-space:nowrap">Startkapitaal (€)</label><input id="startCap" inputmode="decimal" style="max-width:160px"><button class="btn ghost" type="button" id="capSave">Opslaan</button></div>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+"use strict";
+const $ = id => document.getElementById(id);
+const eur = new Intl.NumberFormat("nl-NL", {style:"currency", currency:"EUR"});
+const n2 = (v, d=2) => Number(v).toLocaleString("nl-NL", {minimumFractionDigits:d, maximumFractionDigits:d});
+const sgn = v => (v >= 0 ? "+" : "−") + eur.format(Math.abs(v));
+const num = v => { if(v === null || v === undefined || v === "") return null; const x = Number(String(v).replace(/\s/g,"").replace(",", ".")); return Number.isFinite(x) ? x : null; };
+const pad = n => String(n).padStart(2, "0");
+const dkey = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const MONTHS = ["januari","februari","maart","april","mei","juni","juli","augustus","september","oktober","november","december"];
+const SESS = {london:"Londen", ny:"New York", asia:"Azië"};
+const TODAY = new Date(); TODAY.setHours(0,0,0,0);
+const TKEY = dkey(TODAY);
+const TOKEN_KEY = "juul-journal-token";
+
+const S = {trades:[], deposits:[], settings:{startCapital:10000}, month:new Date(TODAY.getFullYear(), TODAY.getMonth(), 1), sel:TKEY, editing:null, dir:null, token:""};
+
+/* ---------- Juul's sprite ---------- */
+const SPR = ["..CCCCCC....","..CCCCCCCC..","..HHHHHHH...","..HSSSSSSH..","..SSESSESS..","..SSSSSSSS..","...SSMMSS...","....SSSS....","..BBBBBBBB..",".BBBBBBBNNN.",".SBBBBBBNWN.",".SBBBBBBNNN.","..BBBBBBBB..","..PPP..PPP..","..PPP..PPP..","..KKK..KKK.."];
+const PAL = {S:"#e6b48c",E:"#1b1b2f",M:"#b5523b",K:"#2a1a10",W:"#b5a28b",P:"#4a3424",C:"#8e3b2a",H:"#5a3a2a",B:"#c76a2e",N:"#f3eadb"};
+let tick = 0;
+function drawJuul(){
+  const cv = $("juul"), ctx = cv.getContext("2d"); tick++;
+  ctx.clearRect(0,0,cv.width,cv.height);
+  const blink = tick % 17 === 0, dy = tick % 6 === 0 ? 1 : 0;
+  SPR.forEach((row, y) => [...row].forEach((ch, x) => { if(ch === ".") return; ctx.fillStyle = blink && ch === "E" ? PAL.S : PAL[ch]; ctx.fillRect(x*5, (y+dy)*5, 5, 5); }));
+}
+setInterval(drawJuul, 380); drawJuul();
+
+/* ---------- API ---------- */
+async function api(method, path, body){
+  const res = await fetch("/api/" + path, {method, headers:{"authorization":"Bearer " + S.token, ...(body ? {"content-type":"application/json"} : {})}, body: body ? JSON.stringify(body) : undefined});
+  let data = null; try{ data = await res.json(); }catch{ /* empty body */ }
+  if(!res.ok){ const err = new Error(data?.error || `Serverfout (${res.status}).`); err.status = res.status; throw err; }
+  return data;
+}
+async function load(){
+  const st = await api("GET", "state");
+  S.trades = st.trades.map(t => ({...t, _id: t.id}));
+  S.deposits = st.deposits;
+  S.settings = {...S.settings, ...st.settings};
+  if(document.activeElement !== $("startCap")) $("startCap").value = String(num(S.settings.startCapital) ?? "").replace(".", ",");
+  $("status").innerHTML = `Verbonden met Netlify · <b>${S.trades.length}</b> trades · <button type="button" id="logout">uitloggen</button>`;
+  render();
+}
+function authFailed(err){
+  if(err.status !== 401) return false;
+  try{ localStorage.removeItem(TOKEN_KEY); }catch{ /* storage blocked */ }
+  S.token = ""; $("app").hidden = true; $("login").hidden = false;
+  $("loginMsg").className = "msg err"; $("loginMsg").textContent = "Die toegangscode klopt niet.";
+  $("say").textContent = "Even inloggen, dan open ik je journal."; $("status").textContent = "Niet verbonden.";
+  return true;
+}
+
+/* ---------- derived numbers ---------- */
+const result = t => num(t.result) ?? 0;
+function rOf(t){
+  if(num(t.r) !== null) return num(t.r);
+  const e = num(t.entry), s = num(t.sl), x = num(t.exit);
+  if(e === null || s === null || x === null || e === s || !t.dir) return null;
+  return (t.dir === "Short" ? e - x : x - e) / Math.abs(e - s);
+}
+function byDay(){
+  const m = {};
+  S.trades.forEach(t => { if(!t.date) return; const d = m[t.date] || (m[t.date] = {pnl:0, n:0, w:0, trades:[]}); d.pnl += result(t); d.trades.push(t); if(result(t) !== 0){ d.n++; if(result(t) > 0) d.w++; } });
+  return m;
+}
+function monthStats(prefix){
+  const closed = S.trades.filter(t => t.date && t.date.startsWith(prefix) && result(t) !== 0);
+  const wins = closed.filter(t => result(t) > 0), losses = closed.filter(t => result(t) < 0);
+  const gw = wins.reduce((s,t) => s + result(t), 0), gl = -losses.reduce((s,t) => s + result(t), 0);
+  const rs = closed.map(rOf).filter(r => r !== null);
+  const days = Object.entries(byDay()).filter(([k, v]) => k.startsWith(prefix) && v.n);
+  return {closed, wins, losses, pnl: gw - gl, pf: gl ? gw/gl : (gw ? Infinity : null), avgR: rs.length ? rs.reduce((a,b) => a+b, 0)/rs.length : null, rn: rs.length,
+          green: days.filter(([,v]) => v.pnl > 0).length, red: days.filter(([,v]) => v.pnl < 0).length};
+}
+function balance(){
+  const dep = S.deposits.reduce((s,d) => s + (num(d.amount) ?? 0), 0);
+  return {bal: (num(S.settings.startCapital) ?? 0) + dep + S.trades.reduce((s,t) => s + result(t), 0), dep};
+}
+
+/* ---------- render ---------- */
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const sideTag = t => t.dir === "Long" ? `<span class="side L">LONG</span>` : t.dir === "Short" ? `<span class="side S">SHORT</span>` : `<span class="side X">–</span>`;
+function renderStats(){
+  const prefix = dkey(S.month).slice(0,7), m = monthStats(prefix);
+  $("sPnl").textContent = m.closed.length ? sgn(m.pnl) : "–";
+  $("sPnl").className = "v " + (m.pnl > 0 ? "up" : m.pnl < 0 ? "down" : "");
+  $("sMonth").textContent = `${MONTHS[S.month.getMonth()]} ${S.month.getFullYear()} · ${m.closed.length} trades`;
+  $("sWin").textContent = m.closed.length ? Math.round(m.wins.length/m.closed.length*100) + "%" : "–";
+  $("sWl").textContent = `${m.wins.length} winst · ${m.losses.length} verlies`;
+  $("sPf").textContent = m.pf === null ? "–" : m.pf === Infinity ? "∞" : n2(m.pf);
+  $("sR").textContent = m.avgR === null ? "–" : (m.avgR >= 0 ? "+" : "") + n2(m.avgR, 2) + "R";
+  $("sRn").textContent = m.rn ? `over ${m.rn} trades met R` : "vul entry, SL en exit in";
+  $("sDays").innerHTML = `<span class="up">${m.green}</span> / <span class="down">${m.red}</span>`;
+  const b = balance();
+  $("sBal").textContent = eur.format(b.bal);
+  $("sBalS").textContent = `start ${eur.format(num(S.settings.startCapital) ?? 0)}` + (b.dep ? ` + ${eur.format(b.dep)} gestort` : "");
+}
+function renderCal(){
+  const y = S.month.getFullYear(), mo = S.month.getMonth(), days = byDay();
+  $("calMonth").textContent = `${MONTHS[mo]} ${y}`;
+  const first = new Date(y, mo, 1), start = new Date(first); start.setDate(1 - ((first.getDay() + 6) % 7));
+  const max = Math.max(50, ...Object.entries(days).filter(([k]) => k.startsWith(dkey(first).slice(0,7))).map(([,v]) => Math.abs(v.pnl)));
+  let html = "<thead><tr>" + ["ma","di","wo","do","vr","za","zo"].map(d => `<th>${d}</th>`).join("") + "<th>week</th></tr></thead><tbody>";
+  for(const wk = new Date(start);;){
+    let row = "<tr>", tot = 0, any = false;
+    for(let i = 0; i < 7; i++){
+      const d = new Date(wk); d.setDate(wk.getDate() + i);
+      if(d.getMonth() !== mo){ row += `<td><div class="day out"></div></td>`; continue; }
+      const k = dkey(d), v = days[k];
+      let style = "", title = "", body = `<span class="c">${d.getDay() % 6 === 0 ? "weekend" : d > TODAY ? "" : "geen trades"}</span>`;
+      if(v && v.n){
+        tot += v.pnl; any = true;
+        const a = Math.round(16 + 40*Math.min(1, Math.abs(v.pnl)/max));
+        style = ` style="background:color-mix(in srgb,var(${v.pnl >= 0 ? "--good" : "--bad"}) ${a}%,var(--panel-2))"`;
+        title = ` title="${v.n} trades, ${v.w} winst"`;
+        body = `<span class="v">${v.pnl >= 0 ? "+" : "−"}${n2(Math.abs(v.pnl), 0)}</span><span class="c">${v.n} trade${v.n > 1 ? "s" : ""}</span>`;
+      }
+      row += `<td><button type="button" class="day${k === TKEY ? " today" : ""}${k === S.sel ? " sel" : ""}" data-k="${k}"${style}${title} aria-label="${d.getDate()} ${MONTHS[mo]}"><span class="n">${d.getDate()}</span>${body}</button></td>`;
+    }
+    html += row + `<td class="wk ${tot > 0 ? "up" : tot < 0 ? "down" : ""}">${any ? (tot >= 0 ? "+" : "−") + n2(Math.abs(tot), 0) : "·"}</td></tr>`;
+    wk.setDate(wk.getDate() + 7);
+    if(wk.getMonth() !== mo) break;
+  }
+  $("cal").innerHTML = html + "</tbody>";
+}
+function renderDay(){
+  const [y, m, d] = S.sel.split("-").map(Number);
+  $("dayTitle").textContent = new Date(y, m-1, d).toLocaleDateString("nl-NL", {weekday:"long", day:"numeric", month:"long"});
+  const v = byDay()[S.sel];
+  $("dayTrades").innerHTML = v && v.trades.length ? v.trades.map(t => {
+    const r = rOf(t), res = result(t);
+    return `<div class="trow">${sideTag(t)}<span><b>${esc(t.pair || "–")}</b> <span class="num ${res > 0 ? "up" : res < 0 ? "down" : ""}">${sgn(res)}</span>${r !== null ? ` <span class="num status">${r >= 0 ? "+" : ""}${n2(r,1)}R</span>` : ""}</span>
+      <button type="button" class="link" data-edit="${esc(t._id)}">bewerk</button>
+      <span class="meta">${[t.session && SESS[t.session], t.rulesFollowed === true ? "regels gevolgd" : t.rulesFollowed === false ? "regel gebroken" : "", esc(t.notes)].filter(Boolean).join(" · ") || "geen notities"}</span></div>`;
+  }).join("") + `<p class="status" style="margin:8px 0 0">Dag: <b class="num ${v.pnl >= 0 ? "up" : "down"}">${sgn(v.pnl)}</b></p>`
+    : `<p class="none">Geen trades op deze dag. Kies een andere dag in de kalender of voeg er een toe.</p>`;
+}
+function renderLog(){
+  const prefix = dkey(S.month).slice(0,7);
+  const ts = S.trades.filter(t => t.date && t.date.startsWith(prefix)).sort((a,b) => a.date < b.date ? 1 : a.date > b.date ? -1 : String(b.created || "").localeCompare(String(a.created || "")));
+  $("logCount").textContent = ts.length;
+  const f = v => num(v) === null ? "–" : n2(num(v), num(v) % 1 ? 1 : 0);
+  $("log").innerHTML = ts.length ? ts.map(t => { const r = rOf(t), res = result(t);
+    return `<tr><td class="num">${t.date}</td><td>${esc(t.pair)}</td><td>${sideTag(t)}</td><td class="num">${f(t.entry)}</td><td class="num">${f(t.sl)}</td><td class="num">${f(t.tp)}</td><td class="num">${num(t.lots) === null ? "–" : n2(num(t.lots))}</td><td class="num">${f(t.exit)}</td><td class="num ${res > 0 ? "up" : res < 0 ? "down" : ""}">${sgn(res)}</td><td class="num">${r === null ? "–" : (r >= 0 ? "+" : "") + n2(r,1)}</td><td class="notes">${esc(t.notes)}</td></tr>`; }).join("")
+    : `<tr><td colspan="11" class="none" style="text-align:center;padding:18px">Nog geen trades in ${MONTHS[S.month.getMonth()]}. Importeer je Trade Portal-back-up of vul hierboven je eerste trade in.</td></tr>`;
+}
+function renderSay(){
+  if(!S.trades.length){ $("say").textContent = "Mijn journal is nog leeg. Importeer je Trade Portal-back-up of voeg je eerste trade toe, dan houd ik de kalender bij."; return; }
+  const m = monthStats(dkey(TODAY).slice(0,7)), today = byDay()[TKEY];
+  const parts = [`Deze maand ${m.closed.length ? sgn(m.pnl) : "nog geen trades"}`];
+  if(m.closed.length) parts.push(`${m.green} groene en ${m.red} rode dagen`);
+  parts.push(today && today.n ? `vandaag ${today.n} trade${today.n > 1 ? "s" : ""}, ${sgn(today.pnl)}` : "vandaag nog geen trades");
+  $("say").textContent = parts.join(", ") + ".";
+}
+function render(){ renderStats(); renderCal(); renderDay(); renderLog(); renderSay(); }
+
+/* ---------- trade form ---------- */
+function formVals(){
+  return {date:$("fDate").value, pair:$("fPair").value.trim() || "US30", dir:S.dir, session:$("fSession").value || null,
+    entry:num($("fEntry").value), sl:num($("fSl").value), tp:num($("fTp").value), lots:num($("fLots").value), exit:num($("fExit").value),
+    result:num($("fResult").value), rulesFollowed:$("fRules").value === "" ? null : $("fRules").value === "1", notes:$("fNotes").value.trim()};
+}
+function updateR(){ const r = rOf(formVals()); $("fR").textContent = r === null ? "–" : (r >= 0 ? "+" : "") + n2(r, 2) + "R"; }
+function setDir(d){ S.dir = d; document.querySelectorAll(".dirs button").forEach(b => b.classList.toggle("on", b.dataset.d === d)); updateR(); }
+function resetForm(date){
+  S.editing = null; $("tradeForm").reset(); $("fPair").value = "US30"; $("fDate").value = date || S.sel; setDir(null);
+  $("formMode").textContent = "nieuw"; $("fSave").textContent = "Trade opslaan"; $("fCancel").hidden = true; $("delBox").innerHTML = ""; updateR();
+}
+function editTrade(id){
+  const t = S.trades.find(x => x._id === id); if(!t) return;
+  S.editing = id;
+  $("fDate").value = t.date || ""; $("fPair").value = t.pair || ""; setDir(t.dir || null); $("fSession").value = t.session || "";
+  [["fEntry","entry"],["fSl","sl"],["fTp","tp"],["fLots","lots"],["fExit","exit"],["fResult","result"]].forEach(([i,k]) => $(i).value = num(t[k]) === null ? "" : String(num(t[k])).replace(".", ","));
+  $("fRules").value = t.rulesFollowed === true ? "1" : t.rulesFollowed === false ? "0" : ""; $("fNotes").value = t.notes || "";
+  $("formMode").textContent = "bewerken"; $("fSave").textContent = "Wijziging opslaan"; $("fCancel").hidden = false;
+  $("delBox").innerHTML = `<div class="row" style="margin-top:4px"><button type="button" class="btn danger" id="delAsk">Trade verwijderen</button></div>`;
+  updateR(); $("tradeForm").scrollIntoView({behavior:"smooth", block:"start"});
+}
+async function saveTrade(e){
+  e.preventDefault();
+  const v = formVals(), msg = $("fMsg"); msg.className = "msg err";
+  if(!v.date){ msg.textContent = "Kies een datum."; return; }
+  if(v.result === null){ msg.textContent = "Vul het resultaat in, bijvoorbeeld 167,43 of -30."; return; }
+  const id = S.editing || ("m-" + Date.now());
+  const prev = S.trades.find(t => t._id === id) || {};
+  $("fSave").disabled = true;
+  try{
+    await api("PUT", "trades/" + encodeURIComponent(id), {...v, r: rOf(v), source: prev.source || "handmatig", tpId: prev.tpId});
+    msg.className = "msg ok"; msg.textContent = S.editing ? "Wijziging opgeslagen." : "Trade opgeslagen.";
+    S.sel = v.date; const [y, m] = v.date.split("-").map(Number); S.month = new Date(y, m-1, 1);
+    resetForm(v.date); await load();
+  }catch(err){ if(!authFailed(err)){ msg.className = "msg err"; msg.textContent = err.message; } }
+  finally{ $("fSave").disabled = false; }
+}
+
+/* ---------- import / export ---------- */
+async function importFile(file){
+  const msg = $("ioMsg"); msg.className = "msg"; msg.textContent = "Importeren…";
+  let data;
+  try{ data = JSON.parse(await file.text()); if(!Array.isArray(data.trades)) throw 0; }
+  catch{ msg.className = "msg err"; msg.textContent = "Dit is geen Trade Portal-back-up: er staat geen lijst met trades in."; return; }
+  try{
+    const r = await api("POST", "import", data);
+    msg.className = "msg ok"; msg.textContent = `${r.added} trades en ${r.deposits} stortingen geïmporteerd` + (r.skipped ? `, ${r.skipped} overgeslagen (stonden er al in of zonder datum).` : ".");
+    await load();
+  }catch(err){ if(!authFailed(err)){ msg.className = "msg err"; msg.textContent = err.message; } }
+}
+function download(filename, text, type){
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([text], {type})); a.download = filename; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+function toCsv(){
+  const q = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const rows = [["datum","pair","richting","sessie","entry","sl","tp","lots","exit","resultaat","r","regels_gevolgd","notities"]];
+  [...S.trades].sort((a,b) => a.date < b.date ? -1 : 1).forEach(t => rows.push([t.date, t.pair, t.dir || "", t.session || "", num(t.entry) ?? "", num(t.sl) ?? "", num(t.tp) ?? "", num(t.lots) ?? "", num(t.exit) ?? "", result(t).toFixed(2), rOf(t) === null ? "" : rOf(t).toFixed(2), t.rulesFollowed == null ? "" : t.rulesFollowed ? "ja" : "nee", t.notes || ""]));
+  return rows.map(r => r.map(q).join(",")).join("\n");
+}
+
+/* ---------- events ---------- */
+$("loginForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  S.token = $("token").value.trim(); $("loginMsg").textContent = "";
+  if(!S.token) return;
+  try{ await load(); try{ localStorage.setItem(TOKEN_KEY, S.token); }catch{ /* storage blocked */ } $("login").hidden = true; $("app").hidden = false; }
+  catch(err){ if(!authFailed(err)){ $("loginMsg").className = "msg err"; $("loginMsg").textContent = err.message; } }
+});
+$("status").addEventListener("click", e => { if(e.target.id === "logout"){ try{ localStorage.removeItem(TOKEN_KEY); }catch{ /* storage blocked */ } location.reload(); } });
+$("cal").addEventListener("click", e => { const b = e.target.closest("[data-k]"); if(!b) return; S.sel = b.dataset.k; renderCal(); renderDay(); if(!S.editing) $("fDate").value = S.sel; });
+$("prev").addEventListener("click", () => { S.month = new Date(S.month.getFullYear(), S.month.getMonth() - 1, 1); render(); });
+$("next").addEventListener("click", () => { S.month = new Date(S.month.getFullYear(), S.month.getMonth() + 1, 1); render(); });
+$("thisMonth").addEventListener("click", () => { S.month = new Date(TODAY.getFullYear(), TODAY.getMonth(), 1); S.sel = TKEY; render(); });
+$("dayTrades").addEventListener("click", e => { const id = e.target.dataset.edit; if(id) editTrade(id); });
+$("addForDay").addEventListener("click", () => { resetForm(S.sel); $("tradeForm").scrollIntoView({behavior:"smooth", block:"start"}); $("fEntry").focus({preventScroll:true}); });
+document.querySelectorAll(".dirs button").forEach(b => b.addEventListener("click", () => setDir(S.dir === b.dataset.d ? null : b.dataset.d)));
+["fEntry","fSl","fExit"].forEach(i => $(i).addEventListener("input", updateR));
+$("tradeForm").addEventListener("submit", saveTrade);
+$("fCancel").addEventListener("click", () => resetForm());
+$("delBox").addEventListener("click", async e => {
+  if(e.target.id === "delAsk") $("delBox").innerHTML = `<div class="confirm"><span>Deze trade definitief verwijderen? Dit kan niet ongedaan worden.</span><div class="row"><button type="button" class="btn danger" id="delYes">Ja, verwijderen</button><button type="button" class="btn ghost" id="delNo">Nee</button></div></div>`;
+  if(e.target.id === "delNo") editTrade(S.editing);
+  if(e.target.id === "delYes"){
+    try{ await api("DELETE", "trades/" + encodeURIComponent(S.editing)); $("fMsg").className = "msg ok"; $("fMsg").textContent = "Trade verwijderd."; resetForm(); await load(); }
+    catch(err){ if(!authFailed(err)){ $("fMsg").className = "msg err"; $("fMsg").textContent = err.message; } }
+  }
+});
+$("impBtn").addEventListener("click", () => $("imp").click());
+$("imp").addEventListener("change", e => { const f = e.target.files[0]; if(f) importFile(f); e.target.value = ""; });
+$("expJson").addEventListener("click", async () => {
+  try{ download(`juul-journal-${TKEY}.json`, JSON.stringify(await api("GET", "export"), null, 2), "application/json"); }
+  catch(err){ if(!authFailed(err)){ $("ioMsg").className = "msg err"; $("ioMsg").textContent = err.message; } }
+});
+$("expCsv").addEventListener("click", () => download(`juul-journal-${TKEY}.csv`, toCsv(), "text/csv"));
+$("capSave").addEventListener("click", async () => {
+  const v = num($("startCap").value), msg = $("ioMsg");
+  if(v === null){ msg.className = "msg err"; msg.textContent = "Vul een bedrag in voor het startkapitaal."; return; }
+  try{ await api("PUT", "settings", {startCapital:v}); msg.className = "msg ok"; msg.textContent = "Startkapitaal opgeslagen."; await load(); }
+  catch(err){ if(!authFailed(err)){ msg.className = "msg err"; msg.textContent = err.message; } }
+});
+
+/* ---------- boot ---------- */
+resetForm(TKEY);
+(async () => {
+  try{ S.token = localStorage.getItem(TOKEN_KEY) || ""; }catch{ S.token = ""; }
+  if(!S.token) return;
+  try{ await load(); $("login").hidden = true; $("app").hidden = false; }
+  catch(err){ if(!authFailed(err)){ $("status").textContent = err.message; } }
+})();
+})();
+</script>
+</body>
+</html>

@@ -65,3 +65,32 @@ def test_cli_journals_backtest_trades_into_backup(tmp_path):
     main(["--backup", str(backup), "--trades", str(trades_csv), "--out", str(out), "--month", "2026-10"])
     merged = load_backup(out)
     assert [t["pair"] for t in merged["trades"]] == ["XAU/USD", "US30"]
+
+
+def test_netlify_journal_client_pushes_with_stable_id_and_token():
+    from io import BytesIO
+
+    from src.us30_strategy.journal import NetlifyJournal
+
+    calls = []
+
+    class Resp(BytesIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    def opener(req, timeout):
+        calls.append((req.get_method(), req.full_url, req.get_header("Authorization"), json.loads(req.data or b"null")))
+        return Resp(b'{"ok": true, "trades": []}')
+
+    j = NetlifyJournal("https://juul.example/", "secret-code-1234567", opener=opener)
+    doc_id = j.push(WIN)
+    j.push(WIN)
+    method, url, auth, body = calls[0]
+    assert method == "PUT" and url == f"https://juul.example/api/trades/{doc_id}" and auth == "Bearer secret-code-1234567"
+    assert calls[1][1] == url  # same id twice: an update, never a duplicate
+    assert body["result"] == 167.43 and body["dir"] == "Long" and body["session"] == "london" and body["r"] == 5.61
+    with pytest.raises(ValueError):
+        NetlifyJournal("https://juul.example", "")

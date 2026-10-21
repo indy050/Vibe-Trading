@@ -1,5 +1,8 @@
 """Juul, the journal agent: logs every closed trade and keeps the daily P&L calendar.
 
+Primary home: Juul's Journal on Netlify (``NetlifyJournal`` below), which stores
+trades server-side and takes them over an authenticated API.
+
 The user's Trade Portal journal (trade-portal-journal.netlify.app) keeps its data
 in the browser and exchanges it through a backup file:
 ``{"version": 1, "exported": ..., "trades": [...], "deposits": [...]}``.
@@ -13,6 +16,8 @@ import argparse
 import calendar
 import csv
 import json
+import os
+import urllib.request
 from collections import defaultdict
 from collections.abc import Iterable, Sequence
 from datetime import date, datetime
@@ -137,6 +142,41 @@ def read_trades_csv(path: str | Path) -> list[Trade]:
     return out
 
 
+class NetlifyJournal:
+    """Client for Juul's Journal on Netlify (``/api/*``, bearer access code)."""
+
+    def __init__(self, base_url: str, token: str, opener=urllib.request.urlopen) -> None:
+        if not token:
+            raise ValueError("toegangscode ontbreekt (zet JUUL_JOURNAL_TOKEN)")
+        self.base = base_url.rstrip("/")
+        self.token = token
+        self.opener = opener
+
+    def _call(self, method: str, path: str, body: dict | None = None) -> dict:
+        data = json.dumps(body).encode() if body is not None else None
+        req = urllib.request.Request(f"{self.base}/api/{path}", data=data, method=method, headers={
+            "authorization": f"Bearer {self.token}", "content-type": "application/json"})
+        with self.opener(req, timeout=20) as resp:  # noqa: S310 - user-configured journal URL
+            return json.loads(resp.read() or b"{}")
+
+    def state(self) -> dict:
+        return self._call("GET", "state")
+
+    def push(self, trade: Trade, rate: float = 1.0, source: str = "engine") -> str:
+        """Upsert one closed trade under its stable id; re-pushing never duplicates it."""
+        e = trade_to_entry(trade, rate, source)
+        doc_id = f"j-{e['id']}"
+        self._call("PUT", f"trades/{doc_id}", {
+            "date": e["date"], "pair": e["pair"], "dir": e["dir"], "session": trade.session,
+            "entry": trade.entry, "sl": trade.sl, "tp": trade.tp, "lots": trade.lots, "exit": trade.exit_price,
+            "result": round(trade.pnl * rate, 2), "r": round(trade.r_multiple, 2), "rulesFollowed": True,
+            "notes": e["notes"], "source": "juul", "tpId": e["id"]})
+        return doc_id
+
+    def import_backup(self, backup: dict) -> dict:
+        return self._call("POST", "import", backup)
+
+
 def journal_line(trade: Trade) -> str:
     """What Juul says in the office feed."""
     sign = "+" if trade.pnl >= 0 else "−"
@@ -152,7 +192,21 @@ def main(argv: Sequence[str] | None = None) -> int:
     ap.add_argument("--rate", type=float, default=1.0, help="omrekenkoers naar je journal-valuta")
     ap.add_argument("--source", default="engine", help="label in de notities, bijv. 'demo' of 'backtest'")
     ap.add_argument("--month", help="toon de P&L-kalender van deze maand (JJJJ-MM), standaard deze maand")
+    ap.add_argument("--push", metavar="URL", help="zet de trades direct in Juuls Journal op Netlify (code in JUUL_JOURNAL_TOKEN)")
     args = ap.parse_args(argv)
+
+    if args.push:
+        journal = NetlifyJournal(args.push, os.environ.get("JUUL_JOURNAL_TOKEN", ""))
+        trades = read_trades_csv(args.trades) if args.trades else []
+        for t in trades:
+            journal.push(t, args.rate, args.source)
+        state = journal.state()
+        print(f"{len(trades)} trades naar Juuls Journal gestuurd; het journal bevat er nu {len(state['trades'])}.")
+        entries = [{"date": t["date"], "result": t["result"]} for t in state["trades"]]
+        y, m = (map(int, args.month.split("-")) if args.month else (date.today().year, date.today().month))
+        print()
+        print(month_calendar_text(daily_pnl(entries), y, m))
+        return 0
 
     backup = load_backup(args.backup)
     if args.trades:
