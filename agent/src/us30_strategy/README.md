@@ -104,7 +104,7 @@ voor (de setup voldoet al aan alle regels van het plan), daarna reageren:
 Geen bezwaar: de order gaat door. Eén bezwaar: Sterre reageert, het bezwaar wordt
 genoteerd en de order gaat door onder voorbehoud. Twee of meer bezwaren
 (`reject_at_objections = 2`) of een veto: de trade wordt afgeslagen. Het hele
-gesprek staat in het `council`-event en gaat naar het kantoor en Telegram.
+gesprek staat in het `council`-event en is terug te lezen in het kantoor.
 
 ```python
 council = Council(vera=vera_score, bias=strategy.bias, headlines=lambda: desk_headlines, risk=ruud_check)
@@ -112,6 +112,8 @@ strategy.review = council.review
 ```
 
 ## Telegram (`notify.py`)
+
+**Geparkeerd.** De code staat klaar maar wordt nergens aangezet; er gaan geen berichten uit tot je dit zelf inschakelt.
 
 Meldingen bij een order, markt-entry, fill, exit, verwijderde limit en elk overleg
 met bezwaren. Maak een bot via @BotFather en zet `TELEGRAM_BOT_TOKEN` en
