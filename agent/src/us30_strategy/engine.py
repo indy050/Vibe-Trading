@@ -65,10 +65,12 @@ class _Scan:
 
 class Us30Strategy:
     def __init__(self, config: StrategyConfig | None = None, equity: float = 10_000.0,
-                 on_event: Callable[[Event], None] | None = None) -> None:
+                 on_event: Callable[[Event], None] | None = None, review=None) -> None:
         self.cfg = config or StrategyConfig()
         self.equity = equity
         self.on_event = on_event
+        # Optional council: review(proposal) -> object with .approved, .transcript, .summary
+        self.review = review
         self.bars: list[Bar] = []
         self.levels: dict[tuple[date, str], list[float]] = {}
         self.scan: _Scan | None = None
@@ -403,6 +405,16 @@ class Us30Strategy:
             self._emit(bar.time, "setup_skipped", "Stop te ver voor de minimale lotgrootte bij 0,3% risico: geen order.", side=side)
             return
         rr = abs(tp - entry) / abs(entry - sl)
+        if self.review is not None:
+            proposal = {"time": bar.close_time, "side": side, "session": s.session, "entry": entry, "sl": sl, "tp": tp,
+                        "lots": lots, "rr": rr, "market": market, "risk_pct": cfg.risk_fraction * 100}
+            verdict = self.review(proposal)
+            self._emit(bar.time, "council", verdict.summary, approved=verdict.approved,
+                       objections=len(getattr(verdict, "objections", [])), transcript=list(verdict.transcript), side=side)
+            if not verdict.approved:
+                self._emit(bar.time, "setup_skipped", f"{side.capitalize()} afgeslagen na overleg.", side=side,
+                           reason="afgeslagen na overleg")
+                return
         if market:
             self._open(Trade(side, entry, sl, tp, lots, s.session, bar.close_time, bar.close_time), i)
             self._emit(bar.time, "market_entry",

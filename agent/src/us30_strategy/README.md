@@ -33,7 +33,7 @@ accountvaluta. In MT5 staat dat bij de specificatie van het symbool.
 | Risico 0,3% | `risk_fraction` |
 | 1 trade tegelijk, max 3 per sessie en 6 per dag | `max_entries_per_session`, `max_entries_per_day` |
 | Geen entries 40 min voor tot 15 min na nieuws | `news_before_minutes`, `news_after_minutes` |
-| Na verlies 10 minuten pauze | `cooldown_after_loss_minutes` |
+| Geen pauze na een verlies (op jouw verzoek; instelbaar) | `cooldown_after_loss_minutes = 0` |
 
 ## Keuzes waar het plan ruimte laat
 
@@ -89,25 +89,49 @@ ForexFactory geeft via deze feed alleen de huidige en volgende week. Draai
 `--save-news` dus regelmatig (bijvoorbeeld dagelijks), dan groeit `nieuws.csv`
 mee en kan de backtest er later mee werken (`--news nieuws.csv`).
 
+## Overleg voor elke order (`council.py`)
+
+Voordat Max een order plaatst, geven de agents hun mening. Sterre stelt de trade
+voor (de setup voldoet al aan alle regels van het plan), daarna reageren:
+
+| Agent | Bezwaar als | Standaard |
+|---|---|---|
+| Vera | minder dan 3 van de 4 broker-charts dezelfde setup laten zien | `min_broker_match = 3` |
+| Ada | er in de laatste 15 minuten een zware (!) headline was | `breaking_news_minutes = 15` |
+| Ruud | de trade tegen de 4H- of 1H-structuur in gaat | `bias_timeframes = ("H4", "H1")` |
+| Ruud (veto) | het account niet klopt of een risicocheck faalt | altijd afslaan |
+
+Geen bezwaar: de order gaat door. Eén bezwaar: Sterre reageert, het bezwaar wordt
+genoteerd en de order gaat door onder voorbehoud. Twee of meer bezwaren
+(`reject_at_objections = 2`) of een veto: de trade wordt afgeslagen. Het hele
+gesprek staat in het `council`-event en gaat naar het kantoor en Telegram.
+
+```python
+council = Council(vera=vera_score, bias=strategy.bias, headlines=lambda: desk_headlines, risk=ruud_check)
+strategy.review = council.review
+```
+
+## Telegram (`notify.py`)
+
+Meldingen bij een order, markt-entry, fill, exit, verwijderde limit en elk overleg
+met bezwaren. Maak een bot via @BotFather en zet `TELEGRAM_BOT_TOKEN` en
+`TELEGRAM_CHAT_ID` in de omgeving van de server (nooit in code):
+
+```python
+strategy = Us30Strategy(config, on_event=TelegramNotifier().on_event)
+```
+
 ## Juul, de journal-agent (`journal.py`)
 
-Juul zet elke gesloten trade in je **Trade Portal**-journal en houdt de
-P&L-kalender per dag bij. De journal bewaart alles in je browser en wisselt data
-uit via de back-up. Daarom werkt Juul met dat bestand:
+Juul zet elke gesloten trade in **Juuls Journal** op Netlify
+(https://juul-trade-journal.netlify.app, zie `juul-journal/`) en houdt de
+P&L-kalender bij:
 
-1. In de journal: *Back-up downloaden*.
-2. Juul voegt de nieuwe trades toe (handmatige trades en stortingen blijven staan,
-   dubbele trades worden overgeslagen):
+```bash
+export JUUL_JOURNAL_TOKEN=...
+python -m src.us30_strategy.journal --trades trades.csv --push https://juul-trade-journal.netlify.app
+```
 
-   ```bash
-   python -m src.us30_strategy.journal --backup trade-journal-backup.json \
-       --trades trades.csv --out trade-journal-bijgewerkt.json --source demo
-   ```
-
-3. In de journal: *Back-up terugzetten* met het nieuwe bestand.
-   Let op: terugzetten vervangt alles in de browser. Gebruik daarom altijd de
-   nieuwste back-up als basis.
-
-Elke trade krijgt in de notities de sessie, TP of SL, de R-waarde en
-"regels gevolgd". Met `--month 2026-10` toont Juul de P&L-kalender van die maand,
-inclusief je handmatige trades.
+Voor de oude Trade Portal (browseropslag) kan Juul nog steeds een back-up
+samenvoegen met `--backup ... --out ...`. Met `--month 2026-10` toont Juul de
+P&L-kalender van die maand.

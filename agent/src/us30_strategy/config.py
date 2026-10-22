@@ -59,7 +59,8 @@ class StrategyConfig:
     # Trade limits.
     max_entries_per_session: int = 3
     max_entries_per_day: int = 6
-    cooldown_after_loss_minutes: int = 10
+    # Pause after a losing trade (minutes). 0 = no pause, the user's choice.
+    cooldown_after_loss_minutes: int = 0
 
     # High-impact US news blackout (event times in broker time).
     news_before_minutes: int = 40

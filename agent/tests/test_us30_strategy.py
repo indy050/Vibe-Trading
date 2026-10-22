@@ -129,9 +129,16 @@ def test_pending_limit_removed_at_window_end():
     assert cancelled[0].time == DAY.replace(hour=20, minute=30)
 
 
-def test_stop_loss_then_ten_minute_pause():
+def test_no_pause_after_a_loss_by_default():
     loss = [("09:16", 50906, 50907, 50897, 50899), ("09:17", 50899, 50900, 50879, 50882)]
     s = _run(_bars(ASIA_1 + LONDON_1 + loss))
+    assert s.trades[0].exit_reason == "sl" and s.cooldown_until is None
+    assert s.blocked_reason(DAY.replace(hour=9, minute=20), "long") is None
+
+
+def test_optional_pause_after_a_loss():
+    loss = [("09:16", 50906, 50907, 50897, 50899), ("09:17", 50899, 50900, 50879, 50882)]
+    s = _run(_bars(ASIA_1 + LONDON_1 + loss), StrategyConfig(cooldown_after_loss_minutes=10))
     [t] = s.trades
     assert t.exit_reason == "sl" and t.pnl == pytest.approx(-16.5 * 1.81)
     assert s.cooldown_until == DAY.replace(hour=9, minute=28)
